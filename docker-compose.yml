@@ -1,0 +1,55 @@
+version: '3.10'
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+
+services:
+
+  ad_site_pg_db:
+    image: postgres:14.3-alpine3.16
+    container_name: aiohttp_ad_site_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '${DB_HOST_PORT}:${DB_PORT}'
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+
+  ad_site_pgadmin:
+    image: dpage/pgadmin4:latest
+    ports:
+      - "${PGADMIN_HOST_PORT}:${PGADMIN_PORT}"
+    container_name: aiohttp_ad_site_pgadmin
+    depends_on:
+      ad_site_pg_db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - ./services/pgadmin:/var/lib/pgadmin
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
